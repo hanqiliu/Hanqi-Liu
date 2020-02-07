@@ -1,0 +1,153 @@
+---
+title: "Question 2"
+output: md_document
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(mosaic)
+library(FNN)
+library("foreach")
+sclass <- read.csv("~/Desktop/sclass.csv")
+sclass550 = subset(sclass, trim == '350')
+dim(sclass550)
+sclass65AMG = subset(sclass, trim == '65 AMG')
+plot(price ~ mileage, data = sclass550)
+plot(price ~ mileage, data = sclass65AMG)
+```
+By drawing the scatter plot, we can see the basic relationship between mileage and the price.
+Concentrating on the data of sclass 550, and then make the train and test split, and we set the number of train set as the 80% of the whole data set, and the test set is the left ones.
+Also, we concentrate on the data of sclass550 first.
+```{r, echo=FALSE}
+N = nrow(sclass550)
+N_train = floor(0.8*N)
+N_test = N - N_train
+train_ind = sample.int(N, N_train, replace=FALSE)
+D_train = sclass550[train_ind,]
+D_test = sclass550[-train_ind,]
+D_test = arrange(D_test, mileage)
+head(D_test)
+X_train = select(D_train, mileage)
+y_train = select(D_train, price)
+X_test = select(D_test, mileage)
+y_test = select(D_test, price)
+lm1 = lm(price ~ mileage, data=D_train)
+lm2 = lm(price ~ poly(mileage, 2), data=D_train)
+rmse = function(y, ypred) {
+  sqrt(mean(data.matrix((y-ypred)^2)))
+}
+ypred_lm1 = predict(lm1, X_test)
+ypred_lm2 = predict(lm2, X_test)
+rmse(y_test, ypred_lm1)
+rmse(y_test, ypred_lm2)
+D_test$ypred_lm2 = ypred_lm2
+N = nrow(sclass550)
+N_train = floor(0.8*N)
+N_test = N - N_train
+train_ind = sort(sample.int(N, N_train, replace=FALSE))
+D_train = sclass[train_ind,]
+D_train = arrange(D_train, mileage)
+y_train = D_train$price
+X_train = data.frame(mileage=jitter(D_train$mileage))
+knn_model = knn.reg(X_train, X_train, y_train, k = 3)
+D_train$ypred = knn_model$pred
+p_train = ggplot(data = D_train) + 
+  geom_point(mapping = aes(x = mileage, y = price), color='lightgrey') + 
+  theme_bw(base_size=18)
+p_train + geom_path(mapping = aes(x=mileage, y = ypred), color='red', size=1.5)
+```
+And then we can draw the graph for the relationship between mileage and the price by taking K=3 first.
+```{r, echo=FALSE}
+k_grid1 = unique(round(exp(seq(log(330),log(3),length=100))))
+rmse_grid_in1=foreach(k=k_grid1, .combine='c') %do% {
+  knn_model1_2 = knn.reg(X_train, X_train, as.data.frame(y_train), k = k)
+  rmse(y_train, knn_model1_2$pred)
+}
+
+rmse_grid_in1 = data.frame(K = k_grid1, RMSE = rmse_grid_in1)
+
+ggplot(data = rmse_grid_in1) + 
+  geom_line(mapping = aes(x = K, y = RMSE))
+```
+And by calculating the RMSE under different K value, we can generally draw a graph for the K value and the RMSE for in-sample data.
+And then we can draw a graph indicating the relationship between the K and RMSE for the out of sample.
+```{r, echo=FALSE}
+k_grid3 = unique(round(exp(seq(log(30),log(3),length=10))))
+rmse_grid_in3=foreach(k=k_grid3, .combine='c') %do% {
+  knn_model1_3 = knn.reg(X_test, X_test, y_train, k = k)
+  rmse(y_test, knn_model1_3$pred)
+}
+rmse_grid_in3 = data.frame(K = k_grid3, RMSE = rmse_grid_in3)
+ind_best = which.min(rmse_grid_in3$RMSE)
+k_best = k_grid1[ind_best]
+k_best
+```
+After that, we move on to another part of dataset as data refers to sclass65AGM.And conducting the similar process as above.
+```{r, echo=FALSE}
+N = nrow(sclass65AMG)
+N_train = floor(0.8*N)
+N_test = N - N_train
+train_ind = sample.int(N, N_train, replace=FALSE)
+D_train_1 = sclass65AMG[train_ind,]
+D_test_1 = sclass65AMG[-train_ind,]
+D_test_1 = arrange(D_test_1, mileage)
+head(D_test_1)
+X_train_1 = select(D_train_1, mileage)
+y_train_1 = select(D_train_1, price)
+X_test_1 = select(D_test_1, mileage)
+y_test_1 = select(D_test_1, price)
+lm11 = lm(price ~ mileage, data=D_train_1)
+lm22 = lm(price ~ poly(mileage, 2), data=D_train_1)
+rmse = function(y, ypred) {
+  sqrt(mean(data.matrix((y-ypred)^2)))
+}
+p_test = ggplot(data = D_test_1) + 
+  geom_point(mapping = aes(x = mileage, y = price), color='lightgrey') + 
+  theme_bw(base_size=18) 
+p_test
+```
+Here is a scatter plot of the relationship between mileage and the price.
+```{r, echo=FALSE}
+N = nrow(sclass65AMG)
+N_train = floor(0.8*N)
+N_test = N - N_train
+train_ind = sort(sample.int(N, N_train, replace=FALSE))
+D_train_1 = sclass[train_ind,]
+D_train_1 = arrange(D_train_1, mileage)
+y_train_1 = D_train_1$price
+X_train_1 = data.frame(mileage=jitter(D_train_1$mileage))
+```
+Now we can firstly draw a relationship between miles and prices under the condition K=3
+```{r, echo=FALSE}
+knn_model = knn.reg(X_train_1, X_train_1, y_train_1, k = 3)
+D_train_1$ypred = knn_model$pred
+p_train_1 = ggplot(data = D_train_1) + 
+  geom_point(mapping = aes(x = mileage, y = price), color='lightgrey') + 
+  theme_bw(base_size=18)
+p_train + geom_path(mapping = aes(x=mileage, y = ypred), color='red', size=1.5)
+```
+And then generally draw the graph for RMSE under different values of K,we generally assume the K value is from 0 to 30.
+```{r, echo=FALSE}
+k_grid2 = unique(round(exp(seq(log(30),log(3),length=10))))
+rmse_grid_in2=foreach(k=k_grid2, .combine='c') %do% {
+  knn_model1_3 = knn.reg(X_train_1, X_train_1, as.data.frame(y_train_1), k = k)
+  rmse(y_train_1, knn_model1_3$pred)
+}
+rmse_grid_in2 = data.frame(K = k_grid2, RMSE = rmse_grid_in2)
+ggplot(data = rmse_grid_in2) + 
+  geom_line(mapping = aes(x = K, y = RMSE))
+```
+And for the our of sample, the result of relationship of K and RMSE is here.
+```{r, echo=FALSE}
+k_grid4 = unique(round(exp(seq(log(30),log(3),length=10))))
+rmse_grid_in4=foreach(k=k_grid4, .combine='c') %do% {
+  knn_model1_4 = knn.reg(X_train_1, X_test, as.data.frame(y_train_1), k = k)
+  rmse(y_test, knn_model1_4$pred)
+}
+rmse_grid_in4 = data.frame(K = k_grid4, RMSE = rmse_grid_in4)
+ind_best = which.min(rmse_grid_in4$RMSE)
+k_best = k_grid4[ind_best]
+k_best
+ggplot(data = rmse_grid_in4) + 
+  geom_line(mapping = aes(x = K, y = RMSE))
+```
+And for the optimal K, we can see that for the out of sample data, the relationship between K and RMSE generally depends on the K optimal value, which changes over the loop. In this way, we can not receive the optimal K value in the end. But by seeing the graphs, we can choose a relatively good value of K.
