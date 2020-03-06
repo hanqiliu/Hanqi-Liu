@@ -1,0 +1,50 @@
+library(mosaic)
+brca <- read.csv("~/Desktop/data mining 作业/data/brca.csv")
+
+### Question 1
+
+# let's model recall versus risk factors + radiologist
+model_recall = glm(recall ~ . - cancer, data=brca, family=binomial)
+coef(model_recall)
+
+# From this generalized model, we can see for radiologist 34, he has exp(-0.52) ≈ 0.6 to recall a patient, holding all other factors constant.
+# radiologist 89 has exp(0.46) ≈ 1.58 times to recall a patient, holding all other factors constant.
+# radiologist66 has exp(0.35) ≈ 1.42 times to recall a patient, holding all other factors constant.
+# So we can say radiologist 89 is more conservative while radiologist 34 is less conservative among radiologists, holding all other factors constant.
+
+# Then we can consider which radiologist is more accurate by seeing the confusion matrix.
+xtabs(~cancer + recall, data=subset(brca, radiologist == 'radiologist34'))
+xtabs(~cancer + recall, data=subset(brca, radiologist == 'radiologist89'))
+
+# For FDR, for radiologist 89, it is 33/38, while for radiologist 34, it is 13/17, which the radiologist 89 has the higher one.
+# However, for FDR, it is lower for radiologist 89, as 2/7 is lower than 3/7 for radiologist 34.
+# So considering the confusion matrix, it is hard to say for the accuracy.
+
+### Question 2
+# Firstly, for Model A, we regress the cancer outcome on the recall decision
+model_cancer1 = glm(cancer ~ recall, data=brca, family=binomial)
+coef(model_cancer1)
+summary (model_cancer1)
+# We can say that as recall increase by 2 unit, the cancer will increase by exp(2.26) = 9.58.
+# And then we regress the Model B for the cancer on the recall decision and family history.
+model_cancer2 = glm(cancer ~ recall + history, data=brca, family=binomial)
+coef(model_cancer2)
+summary (model_cancer2)
+# If the radiolist were appropriately accounting for a patients' family history for the cancer, I think the regression result of Model B would be better than Model A.
+# Because for model B, it takes the ommited variable in Model A into consideration.
+# However, by seeing the p-value, AIC index and the R-squared, Model B is not better than Model A, because AIC for Model B is higher and p-value is not significant.
+# From this result, we can say for radiologist, the family history is not a main reason for this cancer to justify the existence of cancer and recall.
+
+### After that, we should also consider other reasons for radiologists to recall patients.
+# Firstly, we can model the cancer result on the risk factors
+# let's model cancer versus recall and risk factors
+model_cancer = glm(cancer ~ ., data=brca, family=binomial)
+coef(model_cancer)
+# From the regression result, we can see that patients and older have exp(1.44) ≈ 4.2 the probability of having cancer, holding all else fixed.
+# So it is reasonable for the radiologists to pay more attention to the patients who are 70 and older.
+# Also, patients with tissue density classification 4 have exp(2) ≈ 7.4 times the probability of having cancer as patients with density 1, holding all else fixed.
+# For radiologists, in order to make decisions more precisely, we should also consider the error rates, shown as below.
+# For patiens who are 70 and older, the FDR, it is 70%. And for the patients with density 4, the FDR is 0.73.
+xtabs(~cancer + recall + age, brca) %>% prop.table(margin=c(2, 3))
+xtabs(~cancer + recall + density, brca) %>% prop.table(margin=c(2, 3))
+
