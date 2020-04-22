@@ -1,0 +1,159 @@
+---
+title: "Question 4"
+output: github_document
+---
+```{r, echo=FALSE, message=FALSE, comment=NA}
+library(ggplot2)
+library(LICORS)
+library(foreach)
+library(mosaic)
+social_marketing = read.csv("~/Desktop/data mining 作业/data/social_marketing.csv", row.names=1)
+```
+
+Firstly, we should scale and center the data, and also extract the centers and the scales from the data. By generally checking the data from social_marketing dataset, we plan to not take the spam and adult part into consideration when we think about the marketing segment this time.
+
+Then we plan to find the number of clusters by finding k_mean.
+
+We plan to try to find the optimal K_mean based on the elbow plot for clustering,and in order to make sure that the SSE within the cluster is relatively low. 
+
+From the following elbow plot, we can see the SSE within the cluster vesus K. And this is going to go down with K and we're going to basically find where it stops going down all that fast.
+
+So in this elbow plot, we know that when K-mean=10, the SSE=18000. And when k=20, the SSE is around at 16000, so I plan to choose k_mean as 12 and use it to cluster.
+
+```{r, echo=FALSE, comment=NA}
+X = social_marketing[,(2:34)]
+X = scale(X, center=TRUE, scale=TRUE)
+mu = attr(X,"scaled:center")
+sigma = attr(X,"scaled:scale")
+k_grid = seq(2,20, by=1)
+SSE_grid = foreach(k=k_grid, .combine = 'c') %do% {
+  cluster_k=kmeans(X, k, nstart = 50)
+  cluster_k$tot.withinss
+}
+  plot(k_grid, SSE_grid)
+```
+
+Then, we can try k_means clustering with considering the PCA scores.
+
+In ordet to make it clear, we generally show how the PCA1 and PCA2 look like.
+
+```{r, echo=FALSE, comment=NA}
+pcclust=prcomp(social_marketing[,(2:34)],scale=FALSE)
+summary(pcclust)
+pcclust$rotation[,1:2]
+```
+
+```{r, echo=FALSE, comment=NA}
+k12<-kmeans(social_marketing[,(2:34)],12,iter.max=100,nstart=50,algorithm="Lloyd")
+```
+
+By classifying the PCA of the social marketing data, we can see the different clusters have different features for the PCA.
+
+Cluster 6：In this cluster, there are users/accounts with high PCA1 score and low PCA2 score.
+
+Cluster 3 ：This cluster comprises of customers with low PCA1 score and high PCA2 score.
+
+Cluster 8 and 9： These two cluster both have medium PCA1 and PCA2 score.
+```{r, echo=FALSE, comment=NA}
+kCols=function(vec){cols=rainbow (length (unique (vec)))
+return (cols[as.numeric(as.factor(vec))])}
+digCluster<-k12$cluster; dignm<-as.character(digCluster); # K-means clusters
+plot(pcclust$x[,1:2], col =kCols(digCluster),pch =19,xlab ="K-means",ylab="classes")
+legend("bottomleft",unique(dignm),fill=unique(kCols(digCluster)))
+```
+
+We can also produce analysis by taking more PCA characteristics into consideration. For example, analyze the relationship between clusters and PCAs.
+
+The following graph shows some obvious features.
+
+Cluster 3 and Cluster 9: These two cluster has high PCA3 scores and PCA4 scores.
+
+Cluster 6: This cluster comprises of users with medium PCA3 and PCA4 scores.
+
+```{r, echo=FALSE, comment=NA}
+kCols=function(vec){cols=rainbow (length (unique (vec)))
+return (cols[as.numeric(as.factor(vec))])}
+digCluster<-k12$cluster; dignm<-as.character(digCluster); # K-means clusters
+plot(pcclust$x[,3:4], col =kCols(digCluster),pch =19,xlab ="K-means",ylab="classes")
+legend("bottomleft",unique(dignm),fill=unique(kCols(digCluster)))
+```
+
+In this way, the companies could push the different products to different users/consumers considering their different PCA features.
+
+Then we can try to run kmeans with 12 clusters and starts 50
+
+After clustering, we can figure out which users belong to use clusters. Considering there are thousands of consumers here, we just show the situation in cluster 1 and cluster 2.
+
+But that already could show the companies could sell the products to different clusters, and they can find the specific consumers by knowing which users belong to which cluster.
+
+```{r, echo=FALSE, comment=NA}
+clust1 = kmeans(X, 12, nstart=50)
+which(clust1$cluster == 1)
+which(clust1$cluster == 2)
+```
+
+By considering the characteristics of differnet variables, we can draw the graphs to see that the different features of different clusters to figure out their relatively obvious features.
+
+For example, we can take the features [travel,photo_sharing],[tv_film,sports_fandom],[family,home_and_garden],[beauty,personal_fittness] together.
+
+From the chart below, we can generally see that the cluster 12 has relatively more common features in travel and photo_sharing.
+
+```{r, echo=FALSE, comment=NA}
+qplot(travel, photo_sharing, data=social_marketing, color=factor(clust1$cluster))
+```
+
+And it is clear to find that cluster 10 has more common fatures in sports_fandom and tv_films.
+
+```{r, echo=FALSE, comment=NA}
+qplot(tv_film, sports_fandom, data=social_marketing, color=factor(clust1$cluster))
+```
+
+Futhermore, it is easy to see that cluster 5 has more interests in home_and_graden and family topics.
+
+```{r, echo=FALSE, comment=NA}
+qplot(family, home_and_garden, data=social_marketing, color=factor(clust1$cluster))
+```
+
+Then, considering the personal_fitness and the beauty content, we can see that accounts in cluster 10 mention much more times than other cluster in their Twitter.
+
+```{r, echo=FALSE, comment=NA}
+qplot(beauty, personal_fitness, data=social_marketing, color=factor(clust1$cluster))
+```
+
+So after seeing the result from that and consider the aim of marketing segment, we can try to put more sports ads for people in the cluster 10 before they watch television and films. 
+
+And for people like travel and photo sharing, like the people in the cluster 12, the marketing department can push more advertisements of the famous travelling locations in their Twitter or Instagram and other social media that has photo sharing functions.
+
+And for accounts in cluster 5, who may be parents have concerns about the home construction and family themes, marketing can provide more information about garden, family careness and some similar content on their pages to attract their attention.
+
+We know that marketing segment is one of the most important part in the business to help companies to push their advertisements and attract potential consumers to buy their products, and also a good way for the social media like Twitter to push advertisements to their users more efficiently, more attracitvely to enhance the probability of business success.
+
+Then we take the second run by using kmeans++ initialization and compare the general result with the first run. We can also see which consumers in which cluster now.
+
+```{r, echo=FALSE, comment=NA}
+clust2 = kmeanspp(X, k=12, nstart=50)
+which(clust2$cluster == 1)
+which(clust2$cluster == 2)
+which(clust2$cluster == 3)
+```
+
+Compare versus within-cluster average distances from the first run
+
+We can see they are the same within each other. The first two rows show the value considering withinss, the third and fourth row show the value considering tot.withiness, and the last two rows show the values concerned with betweeness.
+
+```{r, echo=FALSE, comment=NA}
+clust1$withinss
+clust2$withinss
+sum(clust1$withinss)
+sum(clust2$withinss)
+clust1$tot.withinss
+clust2$tot.withinss
+clust1$betweenss
+clust2$betweenss
+```
+
+Generally speaking,not only we can use the graphs of clustering considering the combination of different content informatiom shown on their Twiiter. (i.e family/sports/tv/edcation), we can also consider the clusters with different PCA characteristics.
+
+After that and from the visualization of the data, we can help the marketing segment to help precise marketing more efficiently. 
+
+To be specific, the companies can release products, servieces and advertisements that target users and consumers based on several parameters like the content they are interested in.
